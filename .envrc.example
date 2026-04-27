@@ -1,0 +1,7 @@
+export DATABASE_HOST=localhost
+export DATABASE_PORT=5432
+export DATABASE_NAME=appdb
+export DATABASE_USER=pgadmin
+export DATABASE_PASSWORD=localdev
+export JWT_SECRET_KEY=local-dev-secret-key
+export JWT_EXPIRE_MINUTES=30
