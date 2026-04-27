@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Claude Code
+.claude/
+
+# Terraform
+*.tfplan
+**/.terraform/
+terraform.tfvars
+*.auto.tfvars
+*.tfstate
+*.tfstate.backup
+src/infra/environments/*.backend.hcl
+
+# Deploy config (contains subscription IDs)
+src/deploy/config/subscription_ids.sh
+
