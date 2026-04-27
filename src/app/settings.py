@@ -1,17 +1,27 @@
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_MASKED = "***"
+_SENSITIVE_FIELDS = {"jwt_secret", "database_url"}
 
 
 class Settings(BaseSettings):
-    database_host: str
-    database_port: int = 5432
-    database_name: str
-    database_user: str
-    database_password: str
-    jwt_secret_key: str
+    model_config = SettingsConfigDict(extra="ignore")
+
+    jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 30
+    jwt_expire_minutes: int = 60
 
-    model_config = SettingsConfigDict(env_file=None)
+    database_url: str
+
+    def safe_dump(self) -> dict:
+        return {
+            k: _MASKED if k in _SENSITIVE_FIELDS else v
+            for k, v in self.model_dump().items()
+        }
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]

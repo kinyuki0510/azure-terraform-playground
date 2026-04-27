@@ -59,7 +59,13 @@ tf_destroy_target: guard-env guard-target
 # Python
 # ---------------------------------------------------------------------------
 
-.PHONY: py_init run test_init test_run lint format typecheck check
+.PHONY: fetch_config py_init run test_init test_run lint format typecheck check
+
+fetch_config:
+	@[ -n "$(env)" ] || { echo "Usage: make fetch_config env=dev context=local"; exit 1; }
+	@[ -n "$(context)" ] || { echo "Usage: make fetch_config env=dev context=local"; exit 1; }
+	bash src/deploy/fetch_config.sh --env $(env) --context $(context)
+	direnv allow
 
 py_init:
 	@if [ ! -f $(SOURCE_DIR)/pyproject.toml ]; then uv init --directory=$(SOURCE_DIR); fi

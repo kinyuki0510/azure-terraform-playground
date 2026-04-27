@@ -1,8 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 
-from session_manager import SessionManager
-
-from ..models.user import User
+from repositories.session_manager import SessionManager
+from models.user import User
 
 
 class UserRepository:

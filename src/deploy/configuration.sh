@@ -12,14 +12,22 @@ trap 'find "$TEMP_DIR" -type f -delete' EXIT
 
 # Fetch all key-values from App Configuration in a single API call.
 # AWS SSM get-parameters-by-path equivalent.
-# Usage: load_appconfig_values "$APPCONFIG_NAME" JSON_PATH
+# Usage: load_appconfig_values "$APPCONFIG_NAME" JSON_PATH [LABEL]
 function load_appconfig_values() {
   local _name="$1"
+  local _label="${3:-}"
   local _temp_file
   _temp_file=$(mktemp -p "${TEMP_DIR}" appconfig-XXXXXX.json)
 
+  local _label_args=()
+  if [[ -n "$_label" ]]; then
+    _label_args=(--label "$_label")
+  fi
+
   az appconfig kv list \
     --name "$_name" \
+    "${_label_args[@]}" \
+    --resolve-keyvault \
     --query "[].{Key:key,Value:value}" \
     -o json > "$_temp_file"
 
@@ -42,6 +50,25 @@ function set_env_from_appconfig() {
   fi
 
   export "${_env_var}=${_val}"
+}
+
+# Write a value from the App Configuration JSON to an envrc file as an export statement.
+# Usage: write_envrc_from_appconfig "$JSON_PATH" "/backend/database/url" DATABASE_URL "$ENVRC_FILE"
+function write_envrc_from_appconfig() {
+  local _file="$1"
+  local _key="$2"
+  local _env_var="$3"
+  local _envrc="$4"
+
+  local _val
+  _val=$(jq -r --arg key "$_key" '.[] | select(.Key == $key) | .Value' < "$_file")
+
+  if [[ -z "${_val}" || "${_val}" == "null" ]]; then
+    echo "ERROR: key '${_key}' not found in App Configuration" >&2
+    return 1
+  fi
+
+  echo "export ${_env_var}=${_val}" >> "$_envrc"
 }
 
 # ---------------------------------------------------------------------------

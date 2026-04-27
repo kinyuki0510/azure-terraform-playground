@@ -87,11 +87,37 @@ function set_appconfig_value() {
   local _name="${1}"
   local _key="${2}"
   local _value="${3}"
+  local _label="${4:-}"
+
+  local _label_args=()
+  if [[ -n "$_label" ]]; then
+    _label_args=(--label "$_label")
+  fi
 
   az appconfig kv set \
     --name "${_name}" \
     --key "${_key}" \
     --value "${_value}" \
+    "${_label_args[@]}" \
+    --yes
+}
+
+function set_appconfig_keyvault_ref() {
+  local _name="${1}"
+  local _key="${2}"
+  local _secret_identifier="${3}"
+  local _label="${4:-}"
+
+  local _label_args=()
+  if [[ -n "$_label" ]]; then
+    _label_args=(--label "$_label")
+  fi
+
+  az appconfig kv set-keyvault \
+    --name "${_name}" \
+    --key "${_key}" \
+    --secret-identifier "${_secret_identifier}" \
+    "${_label_args[@]}" \
     --yes
 }
 
@@ -115,6 +141,24 @@ if [[ $ENV_TYPE == "dev" ]]; then
   set_appconfig_value "${APPCONFIG_NAME}" "/resource/boostrap-rg"  "${RG_NAME}"
   set_appconfig_value "${APPCONFIG_NAME}" "/resource/ghcr-image-url" "ghcr.io/kinyuki/azure-terraform-playground"
   set_appconfig_value "${APPCONFIG_NAME}" "/resource/image-tag"      "latest"
+
+  # JWT secret → Key Vault（local/azure共通）
+  JWT_SECRET=$(openssl rand -base64 32)
+  set_keyvault_secret "${KV_NAME}" "jwt-secret" "${JWT_SECRET}"
+  unset JWT_SECRET
+  KV_JWT_SECRET_URI="https://${KV_NAME}.vault.azure.net/secrets/jwt-secret"
+
+  # Backend parameters - local label
+  PG_SUFFIX="${ACTUAL_SUBSCRIPTION_ID:0:8}"
+  set_appconfig_value "${APPCONFIG_NAME}"         "/backend/database/url"        "postgresql://pgadmin:localdev@localhost:5432/appdb" "local"
+  set_appconfig_keyvault_ref "${APPCONFIG_NAME}"  "/backend/auth/jwt-secret"     "${KV_JWT_SECRET_URI}"                               "local"
+  set_appconfig_value "${APPCONFIG_NAME}"         "/backend/auth/expire-minutes" "60"                                                 "local"
+
+  # Backend parameters - azure label
+  PG_HOST="atp-${ENV_TYPE}-pg-${PG_SUFFIX}.postgres.database.azure.com"
+  set_appconfig_value "${APPCONFIG_NAME}"         "/backend/database/url"        "postgresql://pgadmin@${PG_HOST}:5432/appdb?sslmode=require" "azure"
+  set_appconfig_keyvault_ref "${APPCONFIG_NAME}"  "/backend/auth/jwt-secret"     "${KV_JWT_SECRET_URI}"                                      "azure"
+  set_appconfig_value "${APPCONFIG_NAME}"         "/backend/auth/expire-minutes" "60"                                                        "azure"
 
 elif [[ $ENV_TYPE == "stg" ]]; then
   echo "not impled"
