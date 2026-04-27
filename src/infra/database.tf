@@ -1,20 +1,11 @@
-resource "random_password" "pg_admin" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
 resource "azurerm_postgresql_flexible_server" "main" {
-  name                  = "${var.prefix}-pg"
+  name                  = "${local.prefix}-pg-${local.sa_suffix}"
   resource_group_name   = azurerm_resource_group.main.name
   location              = azurerm_resource_group.main.location
   version               = "16"
   sku_name              = "B_Standard_B1ms"
   storage_mb            = 32768
   backup_retention_days = 7
-
-  administrator_login    = "pgadmin"
-  administrator_password = random_password.pg_admin.result
 
   authentication {
     active_directory_auth_enabled = true

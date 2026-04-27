@@ -218,6 +218,4 @@ terraform.tfvars
 *.tfstate.backup
 src/infra/environments/*.backend.hcl
 
-# Deploy config (contains subscription IDs)
-src/deploy/config/subscription_ids.sh
 

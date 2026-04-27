@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "app" {
-  name                     = "${replace(var.prefix, "-", "")}app${local.sa_suffix}"
+  name                     = "${replace(local.prefix, "-", "")}app${local.sa_suffix}"
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
@@ -34,7 +34,7 @@ resource "azurerm_storage_container" "processed" {
 }
 
 resource "azurerm_storage_account" "asset" {
-  name                     = "${replace(var.prefix, "-", "")}asset${local.sa_suffix}"
+  name                     = "${replace(local.prefix, "-", "")}asset${local.sa_suffix}"
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"

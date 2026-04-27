@@ -2,20 +2,16 @@
 # Usage: ./create_tfstate_storage.sh --env <dev|stg|prd>
 
 usage() {
-  echo "error" >&2
+  echo "Usage: $0 --env <dev|stg|prd>" >&2
   exit 1
 }
 
 while [[ "${#}" -gt 0 ]]; do
   case "${1}" in
     --env)
-      if [[ -z "${2}" ]]; then
-        usage
-      fi
+      if [[ -z "${2}" ]]; then usage; fi
       ENV_TYPE="${2}"
-      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then
-        usage
-      fi
+      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then usage; fi
       shift 2
       ;;
     *)
@@ -24,28 +20,15 @@ while [[ "${#}" -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${ENV_TYPE}" ]]; then
-  usage
-fi
+if [[ -z "${ENV_TYPE}" ]]; then usage; fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/../config/subscription_ids.sh"
-if [[ ! -f "${CONFIG_FILE}" ]]; then
-  echo "ERROR: ${CONFIG_FILE} not found. Copy subscription_ids.sh.example and fill in values." >&2
-  exit 1
-fi
-source "${CONFIG_FILE}"
-
-# 誤った環境へのデプロイを防ぐガードレール
 ACTUAL_SUBSCRIPTION_ID=$(az account show --query "id" -o tsv)
-EXPECTED_SUBSCRIPTION_ID="${SUBSCRIPTION_IDS[$ENV_TYPE]}"
+ACTUAL_SUBSCRIPTION_NAME=$(az account show --query "name" -o tsv)
 
-if [[ "${ACTUAL_SUBSCRIPTION_ID}" != "${EXPECTED_SUBSCRIPTION_ID}" ]]; then
-  echo "subscription id is not match" >&2
-  echo "  expected: ${EXPECTED_SUBSCRIPTION_ID}" >&2
-  echo "  actual  : ${ACTUAL_SUBSCRIPTION_ID}" >&2
-  exit 1
-fi
+echo "Deploying to env : ${ENV_TYPE}"
+echo "Subscription     : ${ACTUAL_SUBSCRIPTION_NAME} (${ACTUAL_SUBSCRIPTION_ID})"
+read -rp "Continue? [y/N] " _confirm
+[[ "${_confirm}" =~ ^[Yy]$ ]] || exit 1
 
 declare -A RG_NAMES=(
   ["dev"]="atp-tfstate-dev-rg"

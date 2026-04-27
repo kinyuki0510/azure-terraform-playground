@@ -1,17 +1,16 @@
-variable "prefix" {
+variable "appconfig_name" {
   type        = string
-  description = "resource name prefix (e.g. atp-dev)"
+  description = "Name of the bootstrap App Configuration store (e.g. atp-dev-appconfig)"
+}
+
+variable "bootstrap_rg" {
+  type        = string
+  description = "Resource group containing bootstrap resources (Key Vault, App Configuration)"
 }
 
 variable "allowed_ips" {
   type        = list(string)
   description = "IP addresses allowed to access Storage and PostgreSQL (e.g. your home IP)"
-}
-
-variable "location" {
-  type        = string
-  description = "Azure region (e.g. japaneast)"
-  default     = "japaneast"
 }
 
 variable "deployer_upn" {

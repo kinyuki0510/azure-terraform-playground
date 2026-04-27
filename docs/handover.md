@@ -334,6 +334,16 @@ terraform destroy
 - DEV/STG/PROD分離はSubscriptionレベルで行うのがベストプラクティス
 - コンテナ名はStorage Account内でのみ一意でよい
 
+### グローバル一意が必要なリソース（はまりポイント）
+以下はFQDNがAzure全体でユニークになるため、名前が衝突すると`ServerNameAlreadyExists`等のエラーになる。エラーが出るまで気づきにくいため、**サブスクリプションIDのサフィックス（`sa_suffix`）を付与して一意性を担保すること**。
+
+| リソース | FQDN例 |
+|---|---|
+| Storage Account | `<name>.blob.core.windows.net` |
+| PostgreSQL Flexible Server | `<name>.postgres.database.azure.com` |
+| Key Vault | `<name>.vault.azure.net` |
+| App Configuration | `<name>.azconfig.io` |
+
 ### セキュリティ注意点
 - Azure PaaSサービス（Blob, PostgreSQL等）はデフォルトでVNet外パブリック
 - 本番では必ずPrivate Endpointで閉じること

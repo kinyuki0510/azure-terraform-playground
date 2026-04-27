@@ -1,20 +1,16 @@
 #!/bin/bash
 
 usage() {
-  echo "error" >&2
+  echo "Usage: $0 --env <dev|stg|prd>" >&2
   exit 1
 }
 
 while [[ "${#}" -gt 0 ]]; do
   case "${1}" in
     --env)
-      if [[ -z "${2}" ]]; then
-        usage
-      fi
+      if [[ -z "${2}" ]]; then usage; fi
       ENV_TYPE="${2}"
-      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then
-        usage
-      fi
+      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then usage; fi
       shift 2
       ;;
     *)
@@ -23,31 +19,19 @@ while [[ "${#}" -gt 0 ]]; do
   esac
 done
 
-
-if [[ -z $ENV_TYPE ]]; then
-  usage
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/../config/subscription_ids.sh"
-if [[ ! -f "${CONFIG_FILE}" ]]; then
-  echo "ERROR: ${CONFIG_FILE} not found. Copy subscription_ids.sh.example and fill in values." >&2
-  exit 1
-fi
-source "${CONFIG_FILE}"
+if [[ -z $ENV_TYPE ]]; then usage; fi
 
 ACTUAL_SUBSCRIPTION_ID=$(az account show --query "id" -o tsv)
-EXPECTED_SUBSCRIPTION_ID="${SUBSCRIPTION_IDS[$ENV_TYPE]}"
+ACTUAL_SUBSCRIPTION_NAME=$(az account show --query "name" -o tsv)
 
-if [[ "${ACTUAL_SUBSCRIPTION_ID}" != "${EXPECTED_SUBSCRIPTION_ID}" ]]; then
-  echo "subscription id is not match" >&2
-  echo "  expected: ${EXPECTED_SUBSCRIPTION_ID}" >&2
-  echo "  actual  : ${ACTUAL_SUBSCRIPTION_ID}" >&2
-  exit 1
-fi
+echo "Deploying to env : ${ENV_TYPE}"
+echo "Subscription     : ${ACTUAL_SUBSCRIPTION_NAME} (${ACTUAL_SUBSCRIPTION_ID})"
+read -rp "Continue? [y/N] " _confirm
+[[ "${_confirm}" =~ ^[Yy]$ ]] || exit 1
 
 function register_providers() {
   local _providers=(
+    "Microsoft.AppConfiguration"
     "Microsoft.KeyVault"
     "Microsoft.App"
     "Microsoft.DBforPostgreSQL"
@@ -88,22 +72,49 @@ function set_keyvault_secret() {
     --value "${_value}"
 }
 
+function create_app_configuration() {
+  local _name="${1}"
+  local _resource_group="${2}"
+
+  az appconfig create \
+    --name "${_name}" \
+    --resource-group "${_resource_group}" \
+    --location "japaneast" \
+    --sku Free
+}
+
+function set_appconfig_value() {
+  local _name="${1}"
+  local _key="${2}"
+  local _value="${3}"
+
+  az appconfig kv set \
+    --name "${_name}" \
+    --key "${_key}" \
+    --value "${_value}" \
+    --yes
+}
+
 if [[ $ENV_TYPE == "dev" ]]; then
   KV_NAME="atp-dev-kv"
+  APPCONFIG_NAME="atp-dev-appconfig"
   RG_NAME="atp-keyvault-dev-rg"
 
   register_providers
   create_keyvault "${KV_NAME}" "${RG_NAME}"
+  create_app_configuration "${APPCONFIG_NAME}" "${RG_NAME}"
 
-  set_keyvault_secret "${KV_NAME}" "account-envtype" "dev"
+  #set_keyvault_secret "${KV_NAME}" "account-envtype" "dev"
 
-  read -rsp "pg-admin-password を入力してください: " _pg_password
-  echo
-  set_keyvault_secret "${KV_NAME}" "pg-admin-password" "${_pg_password}"
-  unset _pg_password
-
-  set_keyvault_secret "${KV_NAME}" "account-envtype" "dev"
-
+  # Store subscription ID in App Configuration for post-bootstrap scripts to validate
+  set_appconfig_value "${APPCONFIG_NAME}" "/account/envtype" "dev"
+  set_appconfig_value "${APPCONFIG_NAME}" "/account/subscription-id" "${ACTUAL_SUBSCRIPTION_ID}"
+  set_appconfig_value "${APPCONFIG_NAME}" "/account/subscription-name" "${ACTUAL_SUBSCRIPTION_NAME}"
+  set_appconfig_value "${APPCONFIG_NAME}" "/resource/location"     "japaneast"
+  set_appconfig_value "${APPCONFIG_NAME}" "/resource/prefix"       "atp-${ENV_TYPE}"
+  set_appconfig_value "${APPCONFIG_NAME}" "/resource/boostrap-rg"  "${RG_NAME}"
+  set_appconfig_value "${APPCONFIG_NAME}" "/resource/ghcr-image-url" "ghcr.io/kinyuki/azure-terraform-playground"
+  set_appconfig_value "${APPCONFIG_NAME}" "/resource/image-tag"      "latest"
 
 elif [[ $ENV_TYPE == "stg" ]]; then
   echo "not impled"

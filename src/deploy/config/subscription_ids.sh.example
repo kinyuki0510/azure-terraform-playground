@@ -1,9 +1,0 @@
-#!/bin/bash
-# Copy this file to subscription_ids.sh and fill in actual values.
-# subscription_ids.sh is gitignored — never commit actual subscription IDs.
-
-declare -A SUBSCRIPTION_IDS=(
-  ["dev"]="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  ["stg"]="yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-  ["prd"]="zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
-)

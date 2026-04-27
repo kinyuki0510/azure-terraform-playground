@@ -1,27 +1,24 @@
 #!/bin/bash
-# Usage: ./assign_roles.sh --env <dev|stg|prd> --assignee <account>
+# Usage: ./assign_roles.sh --env <dev|stg|prd> --assignee <object-id>
+# Run after account_setup.sh (requires App Configuration to exist)
+
+set -euo pipefail
 
 usage() {
-  echo "error" >&2
+  echo "Usage: $0 --env <dev|stg|prd> --assignee <object-id>" >&2
   exit 1
 }
 
 while [[ "${#}" -gt 0 ]]; do
   case "${1}" in
     --env)
-      if [[ -z "${2}" ]]; then
-        usage
-      fi
+      if [[ -z "${2}" ]]; then usage; fi
       ENV_TYPE="${2}"
-      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then
-        usage
-      fi
+      if [[ ! "${ENV_TYPE}" =~ ^(dev|stg|prd)$ ]]; then usage; fi
       shift 2
       ;;
     --assignee)
-      if [[ -z "${2}" ]]; then
-        usage
-      fi
+      if [[ -z "${2}" ]]; then usage; fi
       ASSIGNEE="${2}"
       shift 2
       ;;
@@ -31,17 +28,15 @@ while [[ "${#}" -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${ENV_TYPE}" ]] || [[ -z "${ASSIGNEE}" ]]; then
-  usage
-fi
+if [[ -z "${ENV_TYPE:-}" ]] || [[ -z "${ASSIGNEE:-}" ]]; then usage; fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/../config/subscription_ids.sh"
-if [[ ! -f "${CONFIG_FILE}" ]]; then
-  echo "ERROR: ${CONFIG_FILE} not found. Copy subscription_ids.sh.example and fill in values." >&2
-  exit 1
-fi
-source "${CONFIG_FILE}"
+
+APPCONFIG_NAME="atp-${ENV_TYPE}-appconfig"
+
+# Load App Configuration and validate subscription
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/../configuration.sh"
 
 declare -A KV_NAMES=(
   ["dev"]="atp-dev-kv"
@@ -55,7 +50,6 @@ declare -A KV_RG_NAMES=(
   ["prd"]="atp-keyvault-prd-rg"
 )
 
-SUBSCRIPTION_ID="${SUBSCRIPTION_IDS[$ENV_TYPE]}"
 KV_NAME="${KV_NAMES[$ENV_TYPE]}"
 KV_RG_NAME="${KV_RG_NAMES[$ENV_TYPE]}"
 
@@ -71,3 +65,10 @@ az role assignment create \
   --assignee "${ASSIGNEE}" \
   --role "Key Vault Secrets Officer" \
   --scope "${KV_SCOPE}"
+
+APPCONFIG_SCOPE="${SUBSCRIPTION_SCOPE}/resourceGroups/${KV_RG_NAME}/providers/Microsoft.AppConfiguration/configurationStores/${APPCONFIG_NAME}"
+
+az role assignment create \
+  --assignee "${ASSIGNEE}" \
+  --role "App Configuration Data Reader" \
+  --scope "${APPCONFIG_SCOPE}"
