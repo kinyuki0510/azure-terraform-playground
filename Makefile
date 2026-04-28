@@ -69,7 +69,7 @@ fetch_config:
 
 py_init:
 	@if [ ! -f $(SOURCE_DIR)/pyproject.toml ]; then uv init --directory=$(SOURCE_DIR); fi
-	uv add --directory=$(SOURCE_DIR) fastapi uvicorn alembic sqlalchemy psycopg2-binary python-jose passlib pydantic-settings anthropic
+	uv add --directory=$(SOURCE_DIR) fastapi uvicorn alembic sqlalchemy psycopg2-binary python-jose passlib pydantic-settings anthropic structlog
 	@if [ ! -d $(SOURCE_DIR)/migration ]; then uv run --directory=$(SOURCE_DIR) alembic init migration; fi
 
 py_run:

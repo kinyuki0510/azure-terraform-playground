@@ -1,10 +1,17 @@
+import time
+import uuid
 from contextlib import asynccontextmanager
 
+import structlog
+import structlog.contextvars
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from routers import user_router
 
 from exceptions import AuthError
+from logging_config import configure_logging
+
+logger = structlog.get_logger(__name__)
 
 _DESCRIPTION = """
 ## 認証フロー
@@ -24,10 +31,11 @@ _TAGS = [
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Starting up...")
+async def lifespan(_app: FastAPI):
+    configure_logging()
+    logger.info("starting up")
     yield
-    print("Shutting down...")
+    logger.info("shutting down")
 
 
 app = FastAPI(
@@ -37,6 +45,26 @@ app = FastAPI(
     openapi_tags=_TAGS,
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    # リクエストごとに一意の ID を生成し、同一リクエスト内の全ログに自動付与する
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(request_id=str(uuid.uuid4()))
+
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - start) * 1000, 1)
+
+    logger.info(
+        "request",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    return response
 
 
 @app.exception_handler(AuthError)

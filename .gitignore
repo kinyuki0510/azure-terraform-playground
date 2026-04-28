@@ -219,3 +219,6 @@ terraform.tfvars
 src/infra/environments/*.backend.hcl
 
 
+
+# Log files
+logs/
