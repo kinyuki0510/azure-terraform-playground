@@ -24,7 +24,7 @@ guard-upn:
 # Terraform
 # ---------------------------------------------------------------------------
 
-.PHONY: tf_init tf_plan tf_show tf_apply tf_destroy_target
+.PHONY: tf_init tf_plan tf_show tf_apply tf_destroy tf_destroy_target
 
 tf_init: guard-env
 	terraform -chdir=$(TERRAFORM_DIR) init -backend-config="environments/$(env).backend.hcl" -reconfigure
@@ -44,6 +44,13 @@ tf_apply: guard-env guard-ip guard-upn
 	TF_VAR_appconfig_name=atp-$(env)-appconfig \
 	TF_VAR_bootstrap_rg=atp-keyvault-$(env)-rg \
 	terraform -chdir=$(TERRAFORM_DIR) apply \
+	  -var='allowed_ips=["$(MY_IP)"]' \
+	  -var='deployer_upn=$(DEPLOYER_UPN)'
+
+tf_destroy: guard-env guard-ip guard-upn
+	TF_VAR_appconfig_name=atp-$(env)-appconfig \
+	TF_VAR_bootstrap_rg=atp-keyvault-$(env)-rg \
+	terraform -chdir=$(TERRAFORM_DIR) destroy \
 	  -var='allowed_ips=["$(MY_IP)"]' \
 	  -var='deployer_upn=$(DEPLOYER_UPN)'
 
