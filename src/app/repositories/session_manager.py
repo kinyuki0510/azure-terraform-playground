@@ -5,7 +5,7 @@ from functools import lru_cache
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from config import Settings, get_settings
+from settings import Settings, get_settings
 
 
 class SessionManager:
@@ -24,8 +24,3 @@ class SessionManager:
             raise
         finally:
             session.close()
-
-
-@lru_cache
-def get_session_manager() -> SessionManager:
-    return SessionManager(get_settings())

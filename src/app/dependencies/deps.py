@@ -1,16 +1,17 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from functools import lru_cache
 
-from config import get_settings
 from dependencies.authenticator import Authenticator
 from models.user import User
 from repositories.session_manager import SessionManager
 from repositories.user_repository import UserRepository
+from settings import get_settings
 from usecases.auth_usecase import AuthUsecase
 from usecases.user_usecase import UserUsecase
 
 
+@lru_cache
 def get_bearer_security() -> HTTPBearer:
     return HTTPBearer()
 
@@ -26,6 +27,12 @@ def get_user_repository(
     return UserRepository(session_manager)
 
 
+def get_authenticator(
+    repo: UserRepository = Depends(get_user_repository),
+) -> Authenticator:
+    return Authenticator(repo)
+
+
 def get_auth_usecase(
     repo: UserRepository = Depends(get_user_repository),
 ) -> AuthUsecase:
@@ -38,11 +45,14 @@ def get_user_usecase(
     return UserUsecase(repo)
 
 
-def get_authenticator(
-    credentials: HTTPAuthorizationCredentials = Depends(get_bearer_security),
-    repo: UserRepository = Depends(get_user_repository),
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(get_bearer_security()),
+    authenticator: Authenticator = Depends(get_authenticator),
 ) -> User:
-    try:
-        return Authenticator(repo).authenticate(credentials.credentials)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    return authenticator.authenticate(credentials.credentials)
+
+
+def require_auth(
+    _: User = Depends(get_current_user),
+) -> None:
+    pass

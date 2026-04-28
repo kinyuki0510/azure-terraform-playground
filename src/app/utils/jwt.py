@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 
-from config import get_settings
+from settings import get_settings
 
 
 def create_token(user_id: int) -> str:
