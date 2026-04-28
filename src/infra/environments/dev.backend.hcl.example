@@ -1,0 +1,4 @@
+resource_group_name  = "atp-tfstate-dev-rg"
+storage_account_name = "atptfstatedev<subscription_id_first_8_chars>"
+container_name       = "tfstate"
+key                  = "terraform.tfstate"
